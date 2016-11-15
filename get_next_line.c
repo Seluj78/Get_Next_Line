@@ -1,83 +1,81 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   get_next_line.c                                    :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: jlasne <marvin@42.fr>                      +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2016/11/14 10:46:47 by jlasne            #+#    #+#             */
+/*   Updated: 2016/11/15 14:36:22 by jlasne           ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include "get_next_line.h"
 
-static unsigned int	check_line(char *buf)
+char	*ft_putline(char **buff, char **line)
 {
-		unsigned int i;
+	char		*pos;
 
-		i = 0;
-		while (buf[i] != '\0')
-		{
-				if (buf[i] == '\n')
-				{
-						buf[i] = '\0';
-						return (i + 1);
-				}
-				i++;
-		}
-		return (i);
+	pos = ft_strchr(*buff, '\n');
+	if (pos)
+		*pos = 0;
+	if (!*line)
+		*line = ft_strdup(*buff);
+	else
+		*line = ft_strjoin((char *)*line, *buff);
+	if (pos && pos[1])
+		*buff = ft_strcpy(*buff, pos + 1);
+	else if ((pos && !pos[1]) || !pos)
+		ft_bzero((void *)*buff, ft_strlen(*buff));
+	return (pos);
 }
 
-static void			join_buf(char **buf2, char **buf)
+int		ft_read(int const fd, char **buff, char **line)
 {
-		char	*tmp;
-		char	*tmp2;
+	char		*pos;
+	int			rd;
 
-		tmp = NULL;
-		tmp2 = NULL;
-		if (*buf2 && **buf2)
-		{
-				tmp2 = ft_strdup(*buf2);
-				if (*buf)
-				{
-						tmp = ft_strdup(*buf);
-						free(*buf);
-				}
-				*buf = ft_strjoin(tmp, tmp2);
-				if (tmp)
-						free(tmp);
-				if (tmp2)
-						free(tmp2);
-		}
+	rd = 1;
+	pos = NULL;
+	while (rd != 0)
+	{
+		rd = read(fd, *buff, BUFF_SIZE);
+		if (rd < 0)
+			return (-1);
+		if (rd == 0)
+			return (0);
+		(*buff)[rd] = 0;
+		pos = ft_putline(buff, &(*line));
+		if (pos)
+			return (1);
+	}
+	return (0);
 }
 
-static int			return_line(char **buf, char **buf2, char **line)
+int		get_next_line(int const fd, char **line)
 {
-		unsigned int	i;
-		char			*tmp;
+	static char	*buff;
+	int			rd;
+	char		*ret;
 
-		tmp = NULL;
-		i = check_line(*buf);
-		*line = ft_strdup(*buf);
-		tmp = ft_strdup(*buf + i);
-		free(*buf);
-		*buf = tmp;
-		if (buf2)
-				free(*buf2), *buf2 = NULL;
-		return (1);
-}
-
-int					get_next_line(int const fd, char **line)
-{
-		int				f;
-		char			*buf2;
-		static char		*buf = NULL;
-
-		buf2 = NULL;
-		if (fd <= 0 || (!(line)) || BUFF_SIZE < 1)
-				return (-1);
-		if ((!(buf2 = (char*)malloc(sizeof(char) * BUFF_SIZE + 1))))
-				return (-1);
-		while (((f = read(fd, buf2, BUFF_SIZE)) > 0) && (!(ft_strchr(buf2, '\n'))))
-				buf2[f] = '\0', join_buf(&buf2, &buf);
-		if (buf2 && *buf2 && f > 0)
-				buf2[f] = '\0', join_buf(&buf2, &buf);
-		if (f < 0)
-				return (-1);
-		if (buf && buf[0] != '\0')
-				return (return_line(&buf, &buf2, line));
-		if (buf2)
-				free(buf2), buf2 = NULL;
-		free(buf), buf = NULL;
-		*line = NULL;
-		return (0);
+	if (BUFF_SIZE <= 0 || fd < 0 || line == NULL)
+		return (-1);
+	*line = NULL;
+	rd = 0;
+	if (!buff)
+	{
+		buff = (char *)malloc(sizeof(char) * BUFF_SIZE + 1);
+		buff[0] = 0;
+	}
+	if (ft_strchr((buff), '\n') || buff[0])
+	{
+		ret = ft_putline(&buff, line);
+		if (ret)
+			rd = 1;
+	}
+	if (rd == 0)
+		rd = ft_read(fd, &buff, line);
+	if (*line)
+		rd = 1;
+	return (rd);
 }
